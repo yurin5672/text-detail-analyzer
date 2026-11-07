@@ -17,9 +17,11 @@ button.s{background:var(--p2);color:var(--t);border:1px solid var(--l)}button:di
 details{border:1px solid var(--l);border-radius:10px;margin-bottom:9px;background:#151720}summary{cursor:pointer;padding:10px 12px;font-weight:700;display:flex;justify-content:space-between;gap:8px}
 .cb{padding:2px 12px 12px}.it{margin:9px 0}.it .n{display:flex;justify-content:space-between;font-size:13px}.it .tr{height:6px;background:var(--l);border-radius:4px;margin:3px 0}.it .tr i{display:block;height:100%;border-radius:4px}.it small{color:var(--m)}
 .box{background:#12141c;border-left:3px solid var(--a);padding:8px 11px;border-radius:6px;margin:7px 0;font-size:14px}.q{color:var(--m);font-size:13px}.err{color:#ff9b9b}ul{margin:5px 0;padding-left:20px}
-@media(max-width:900px){main,.grid2,.head{grid-template-columns:1fr}}
+.tabs{position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0;display:flex;gap:6px;flex-wrap:wrap}.pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.pill{background:var(--p2);color:var(--t);border:1px solid var(--l);padding:6px 11px;font-size:13px}.pill.on{border-color:var(--a);background:#2b2540}.tools{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+main>section:first-child{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto}
+@media(max-width:900px){main,.grid2,.head{grid-template-columns:1fr}main>section:first-child{position:static;max-height:none}}
 </style></head><body>
-<header><h1>작품 정밀 분석기</h1><p>장르·분위기를 먼저 판별해 평가 기준을 맞춘 뒤, 10개 영역 100개 지표로 채점하고 등급과 개선안을 뽑아냄.</p></header>
+<header><h1>작품 정밀 분석기</h1><p>장르·분위기를 먼저 판별해 평가 기준을 맞춘 뒤, 14개 영역 160개 지표로 채점하고 등급과 개선안을 뽑아냄.</p></header>
 <main>
 <section>
  <div class="panel"><h2>API 설정</h2>
@@ -50,18 +52,24 @@ const CATS=[
 ["감정·주제","감정 전달,카타르시스,공감,웃음,설렘,긴장감,슬픔·여운,주제 의식,메시지 자연스러움,정서 일관"],
 ["상업성","연재 적합성,플랫폼 적합,제목·로그라인 매력,정주행성,팬덤 형성력,2차 확장성,댓글 유발,결제 전환력,완결 가능성,리텐션"]
 ];
-const RUB="채점 기준: 0~100점. 50=연재 플랫폼 평균 수준, 70=상위권, 85 이상은 극소수 상위 작품에만 부여. 점수 인플레이션 금지. 제공된 본문 범위 안에서만 평가하고 해당 없으면 s는 null.";
+const EX=["가독 유지력,초반 이탈 구간 없음","서사 밀도,회차 단위 완결감","주인공 결핍·욕망,인물 등장 타이밍","대사 리얼리티,대화의 갈등 기능","문장 정확성,장면별 문체 적응","표기 일관성,연재 가독 규격 준수","세계 규칙 활용,정보 제시 자연스러움","장르 약속 이행,독자 기대 배신","감정선 설계,주제 반복 변주","독자층 도달성,수익 모델 적합"];
+EX.forEach((e,i)=>CATS[i][1]+=','+e);
+CATS.push(["시점·서술","시점 안정성,서술 거리 조절,내적 독백 비중,정보 제한 활용,화자 신뢰도,시제 일관,서술 속도 조절,보여주기 vs 말하기,시간 구조,서술 목소리"],
+["독자 경험·심리","감정이입 속도,대리만족,카타르시스 타이밍,기대-배신 균형,인지 부하 관리,몰입 방해 요소 없음,공감 가능한 결핍,호기심 간격 설계,정서 보상,재독 가치"],
+["장면·연출","장면 목적 명확성,장면 길이 균형,공간 묘사,시간 흐름 처리,사건·액션 연출,심리 묘사,분위기 조성,장면 전환 연결,시각적 이미지,긴장-이완 배치"],
+["톤·완성도","톤 일관성,유머·진지 균형,표현 수위 적정,편견 표현 회피,모방·답습 위험 없음,퇴고 완성도,분량 적정,제목-본문 일치,마무리 처리,전반 완성도"]);
+const RUB="채점 기준: 0~100점. 0~29 심각한 결함, 30~49 미흡, 50~59 연재 플랫폼 평균(50=평균), 60~69 양호, 70~79 상위권, 80~89 매우 우수, 90 이상은 극소수. 점수 인플레이션 금지. 지표를 비슷한 점수로 뭉치지 말고 근거에 따라 차이를 둘 것. 본문에서 확인할 수 없는 지표는 s를 null로 하고 c에 이유를 쓸 것. 제공된 본문 범위 안에서만 평가.";
 let S={},busy=false;
 const parse=s=>{s=s.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');const a=s.indexOf('{'),b=s.lastIndexOf('}');if(a<0||b<a)throw Error('JSON 응답을 찾지 못했어.');return JSON.parse(s.slice(a,b+1))};
 const prog=(m,p)=>{$('status').textContent=m;$('pg').style.width=p+'%'};
-async function callAI(prompt){
+async function callAI(prompt,temp=0.4){
  const key=$('apiKey').value.trim();let model=$('model').value.trim();
  if(!key||!model)throw Error('API 설정을 먼저 입력해줘.');
  const SYS='Return only valid JSON. Follow the instructions exactly. Write all text values in Korean.';
  const gem=$('provider').value==='gemini';
  const url=gem?`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model.replace(/^models\//,''))}:generateContent`:$('endpoint').value.trim();
- const init=gem?{headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({systemInstruction:{parts:[{text:SYS}]},contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.6,responseMimeType:'application/json'}})}
- :{headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,temperature:0.6,messages:[{role:'system',content:SYS},{role:'user',content:prompt}]})};
+ const init=gem?{headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({systemInstruction:{parts:[{text:SYS}]},contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:temp,responseMimeType:'application/json'}})}
+ :{headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,temperature:temp,messages:[{role:'system',content:SYS},{role:'user',content:prompt}]})};
  const D=[3000,7000,15000,30000];let r,d;
  for(let i=0;;i++){
   r=await fetch(url,{method:'POST',...init});d=await r.json().catch(()=>({}));
@@ -84,17 +92,17 @@ function stats(t){
 const sline=()=>Object.entries(S.stats).map(([k,v])=>k+'='+v).join(', ');
 const head=()=>`작품 제목: ${S.title||'미상'}\n[참고용 기계 계산 통계] ${sline()}\n\n[작품 본문]\n${S.text}`;
 const profPrompt=()=>`너는 대중문학·웹소설 전문 편집자이자 서사학자다. 아래 글의 정체를 판별하고, 이 글에 맞는 평가 기준을 설계해라.
-- weights: 10개 영역(${CATS.map(c=>c[0]).join(', ')}) 순서의 가중치(0.3~2.0). 장르·분량·분위기에 따라 중요도를 다르게 줘라(예: 코미디는 대사·감정↑, 미스터리는 서사·복선↑, 프롤로그는 훅↑).
+- weights: ${CATS.length}개 영역(${CATS.map(c=>c[0]).join(', ')}) 순서의 가중치(0.3~2.0). 장르·분량·분위기에 따라 중요도를 다르게 줘라(예: 코미디는 대사·감정↑, 미스터리는 서사·복선↑, 프롤로그는 훅↑).
 - devices: 글에서 실제로 발견되는 서사 기법·수사 용어(예: 인 메디아스 레스, 체호프의 총, 신뢰할 수 없는 화자, 3막 구조, 클리셰 전복 등) 3~8개와 본문 근거.
-JSON: {"genre":"주장르","sub":["세부장르"],"tags":["키워드"],"mood":["분위기"],"pov":"시점","stage":"분량·회차 성격","target":"예상 타깃 독자층","platform":"어울리는 연재 방식","logline":"한 줄 요약","weights":[10개 숫자],"criteria":"이 작품에 적용할 평가 기준: 중요하게 볼 것/관대하게 볼 것 3~4문장","devices":[{"term":"용어","where":"본문 근거","note":"효과"}]}
+JSON: {"genre":"주장르","sub":["세부장르"],"tags":["키워드"],"mood":["분위기"],"pov":"시점","stage":"분량·회차 성격","target":"예상 타깃 독자층","platform":"어울리는 연재 방식","logline":"한 줄 요약","weights":[${CATS.length}개 숫자],"criteria":"이 작품에 적용할 평가 기준: 중요하게 볼 것/관대하게 볼 것 3~4문장","devices":[{"term":"용어","where":"본문 근거","note":"효과"}]}
 \n${head()}`;
 const catPrompt=i=>{const ms=CATS[i][1].split(',');return`너는 '${CATS[i][0]}' 영역 전문 심사위원이다. ${RUB}
 작품 프로필: ${JSON.stringify({genre:S.profile.genre,sub:S.profile.sub,mood:S.profile.mood,stage:S.profile.stage,criteria:S.profile.criteria})}
-이 프로필의 장르·분위기에 맞는 기준으로 아래 ${ms.length}개 지표를 순서대로 채점해라. 각 근거(c)에는 본문의 구체적 부분을 짚어 한두 문장으로 써라.
+이 프로필의 장르·분위기에 맞는 기준으로 아래 ${ms.length}개 지표를 순서대로 채점해라. 반드시 본문을 근거로 판단하고, 지표마다 실제 본문 구절을 q에 인용해라. 이 지표에서 가장 큰 장점이나 결함을 구체적으로 짚어라.
 지표: ${ms.join(' / ')}
-JSON: {"items":[{"n":"지표명","s":0~100 정수,"c":"근거"}],"sum":"영역 총평 2~3문장","fix":["구체적 개선안 2~3개"]}
+JSON: {"items":[{"n":"지표명","s":0~100 정수,"q":"근거가 된 본문 구절(20자 내외, 없으면 빈 문자열)","c":"판단 근거 1~2문장","t":"80점 미만일 때 구체적 수정 방법 1문장, 아니면 빈 문자열"}],"sum":"영역 총평 2~3문장","good":["잘한 점 2개"],"fix":["핵심 개선안 3개"]}
 \n${head()}`};
-const synPrompt=()=>{const sc=CATS.map((c,i)=>{const x=S.cats[i];return x?.items?c[0]+': '+x.items.map(m=>m.n+'='+m.s).join(', '):''}).filter(Boolean).join('\n');
+const synPrompt=()=>{const sc=CATS.map((c,i)=>{const x=S.cats[i];return x?.items?c[0]+': '+x.items.map(m=>m.n+'='+m.s).join(', ')+' | 개선: '+(x.fix||[]).join('; '):''}).filter(Boolean).join('\n');
 return`너는 냉정하지만 건설적인 총괄 편집장이다. ${RUB}
 작품 프로필: ${JSON.stringify(S.profile)}
 영역별 채점 결과:\n${sc}
@@ -110,31 +118,46 @@ function radar(av){const n=av.length,pt=(i,v)=>{const a=-Math.PI/2+i*2*Math.PI/n
  const g=[25,50,75,100].map(l=>`<polygon points="${av.map((_,i)=>pt(i,l).join(',')).join(' ')}" fill="none" stroke="#303442"/>`).join('');
  const lb=CATS.map((c,i)=>{const[x,y]=pt(i,125);return`<text x="${x}" y="${y}" text-anchor="middle" font-size="10" fill="#9da2b3">${c[0]}</text>`}).join('');
  return`<svg viewBox="-30 -5 360 310">${g}<polygon points="${av.map((v,i)=>pt(i,v||0).join(',')).join(' ')}" fill="#b6a0ff55" stroke="#b6a0ff"/>${lb}</svg>`}
+const det=(k,t,b,d)=>`<details ${(S.open[k]??d)?'open':''} ontoggle="S.open['${k}']=this.open"><summary>${t}</summary><div class="cb">${b}</div></details>`;
+const go=(t,i)=>{S.tab=t;if(i!=null)S.sel=i;render();$('out').scrollIntoView()};
+const ex=v=>{(S.cats[S.sel]?.items||[]).forEach((_,j)=>S.open[S.sel+'-'+j]=!!v);render()};
+const bar=v=>`<div class="tr"><i style="width:${v||0}%;background:${col(v)}"></i></div>`;
+const ul=l=>`<ul>${l.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`;
 function render(){
- if(!S.stats)return;const T=total(),p=S.profile,y=S.syn;let h='';
- if(T.score!=null){const s=T.score;h+=`<div class="panel head"><div class="grade"><b style="color:${col(s)}">${grade(s)}</b><span>${s.toFixed(1)} / 100</span></div><div><h2>${esc(S.title||'분석 결과')}</h2>${y?`<div class="box">${esc(y.verdict)}</div><p>${esc(y.summary)}</p>`:'<p class="hint">종합 평가 작성 중…</p>'}<p class="hint">점수는 연재 플랫폼 평균 수준을 50으로 둔 AI의 상대 평가야.${T.f<1?` 몰입·감정 점수가 높아 가독성·기술 항목 가중치를 ×${T.f} 로 낮췄어(재밌으면 사소한 흠은 봐주는 보정).`:''}</p></div></div>`}
- if(p)h+=`<div class="panel"><h2>작품 프로필</h2><div class="grid2"><div>${radar(T.av)}</div><div><div class="chips">${[p.genre,...(p.sub||[]),...(p.mood||[]),...(p.tags||[])].map(x=>`<span class="chip">${esc(x)}</span>`).join('')}</div><p><b>로그라인</b> ${esc(p.logline)}</p><p><b>시점</b> ${esc(p.pov)} · <b>구간</b> ${esc(p.stage)}</p><p><b>타깃</b> ${esc(p.target)}</p><p><b>어울리는 연재</b> ${esc(p.platform)}</p><p class="q">적용 기준: ${esc(p.criteria)}</p></div></div></div>`;
- h+=`<div class="panel"><h2>기계 계산 통계</h2><div class="st">${Object.entries(S.stats).map(([k,v])=>`<div>${k}<b>${esc(v)}</b></div>`).join('')}</div></div>`;
- if(p?.devices?.length)h+=`<div class="panel"><h2>발견된 서사 기법·용어</h2>${p.devices.map(d=>`<div class="box"><b>${esc(d.term)}</b> — ${esc(d.note)}<div class="q">${esc(d.where)}</div></div>`).join('')}</div>`;
+ if(!S.stats)return;const T=total(),p=S.profile,y=S.syn;
+ let h=`<div class="tabs">${[['sum','요약'],['fix','개선점'],['cat','영역별 상세'],['info','프로필·통계']].map(t=>`<button class="${S.tab==t[0]?'':'s'}" onclick="go('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
  const all=[];CATS.forEach((c,i)=>S.cats[i]?.items?.forEach(m=>typeof m.s==='number'&&all.push({...m,c:c[0]})));
- if(all.length>9){all.sort((a,b)=>a.s-b.s);const li=l=>l.map(m=>`<li>${esc(m.c)} · ${esc(m.n)} <b style="color:${col(m.s)}">${m.s}</b></li>`).join('');h+=`<div class="panel"><div class="grid2"><div><h3>가장 약한 지표 TOP 10</h3><ul>${li(all.slice(0,10))}</ul></div><div><h3>가장 강한 지표 TOP 10</h3><ul>${li(all.slice(-10).reverse())}</ul></div></div></div>`}
- if(y)h+=`<div class="panel"><h2>개선 포인트</h2>${(y.weaknesses||[]).map(w=>`<div class="box"><b>${esc(w.t)}</b><br>${esc(w.d)}${w.quote?`<div class="q">“${esc(w.quote)}”</div>`:''}<div>→ ${esc(w.fix)}</div></div>`).join('')}<h3>우선순위 액션 플랜</h3><ol>${(y.plan||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ol><h3>강점</h3>${(y.strengths||[]).map(w=>`<div class="box"><b>${esc(w.t)}</b> ${esc(w.d)}</div>`).join('')}<h3>독자 반응 예상</h3><p>${esc(y.readers)}</p></div>`;
- h+=`<div class="panel"><h2>영역별 세부 분석 (지표 ${CATS.reduce((n,c)=>n+c[1].split(',').length,0)}개)</h2>`+CATS.map((c,i)=>{const x=S.cats[i],a=avg(i);
-  if(x?.err)return`<details open><summary>${c[0]}<span class="err">실패</span></summary><div class="cb err">${esc(x.err)} <button class="s" onclick="runCat(${i})">재시도</button></div></details>`;
-  if(!x)return`<details><summary>${c[0]}<span class="hint">${S.profile?'분석 중…':'대기'}</span></summary></details>`;
-  return`<details><summary>${c[0]} <span class="hint">×${W(i).toFixed(1)}</span><span style="color:${col(a)}">${a==null?'-':a.toFixed(0)}</span></summary><div class="cb"><p>${esc(x.sum)}</p>${(x.items||[]).map(m=>`<div class="it"><div class="n"><span>${esc(m.n)}</span><b style="color:${col(m.s)}">${m.s??'-'}</b></div><div class="tr"><i style="width:${m.s||0}%;background:${col(m.s)}"></i></div><small>${esc(m.c)}</small></div>`).join('')}${x.fix?.length?`<h3>개선안</h3><ul>${x.fix.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}</div></details>`}).join('')+'</div>';
+ if(S.tab=='sum'){
+  if(T.score!=null){const s=T.score;h+=`<div class="panel head"><div class="grade"><b style="color:${col(s)}">${grade(s)}</b><span>${s.toFixed(1)} / 100</span></div><div><h2>${esc(S.title||'분석 결과')}</h2>${y?`<div class="box">${esc(y.verdict)}</div><p>${esc(y.summary)}</p>`:'<p class="hint">종합 평가 작성 중…</p>'}<p class="hint">점수는 연재 플랫폼 평균 수준을 50으로 둔 AI의 상대 평가야.${T.f<1?` 몰입·감정 점수가 높아 가독성·기술 항목 가중치를 ×${T.f} 로 낮췄어(재밌으면 사소한 흠은 봐주는 보정).`:''}</p></div></div>`}
+  h+=`<div class="panel"><h2>영역별 점수 <small class="hint">클릭하면 상세</small></h2><div class="grid2"><div>${radar(T.av)}</div><div>${CATS.map((c,i)=>{const a=T.av[i];return`<div class="it" style="cursor:pointer" onclick="go('cat',${i})"><div class="n"><span>${c[0]} <small>×${W(i).toFixed(1)}</small></span><b style="color:${col(a)}">${a==null?'-':a.toFixed(0)}</b></div>${bar(a)}</div>`}).join('')}</div></div></div>`;
+  if(all.length>9){all.sort((a,b)=>a.s-b.s);const li=l=>l.map(m=>`<li>${esc(m.c)} · ${esc(m.n)} <b style="color:${col(m.s)}">${m.s}</b></li>`).join('');h+=`<div class="panel"><div class="grid2"><div><h3>가장 약한 지표 TOP 10</h3><ul>${li(all.slice(0,10))}</ul></div><div><h3>가장 강한 지표 TOP 10</h3><ul>${li(all.slice(-10).reverse())}</ul></div></div></div>`}
+ }else if(S.tab=='fix'){
+  if(!y)h+='<div class="panel hint">종합 평가 대기 중…</div>';
+  else h+=`<div class="panel"><h2>약점과 개선안</h2>${(y.weaknesses||[]).map((w,j)=>det('w'+j,esc(w.t),`${esc(w.d)}${w.quote?`<div class="q">“${esc(w.quote)}”</div>`:''}<div class="box">→ ${esc(w.fix)}</div>`,j<3)).join('')}</div><div class="panel"><h2>우선순위 액션 플랜</h2><ol>${(y.plan||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div><div class="panel"><h2>강점</h2>${(y.strengths||[]).map((w,j)=>det('g'+j,esc(w.t),esc(w.d),false)).join('')}</div><div class="panel"><h2>독자 반응 예상</h2><p>${esc(y.readers)}</p></div>`;
+ }else if(S.tab=='cat'){
+  const i=S.sel,c=CATS[i],x=S.cats[i],a=T.av[i];
+  h+=`<div class="pills">${CATS.map((c,k)=>{const v=T.av[k],e=S.cats[k]?.err;return`<button class="pill ${k==i?'on':''}" onclick="go('cat',${k})">${c[0]} <b style="color:${e?'#ff9b9b':col(v)}">${e?'!':v==null?'…':v.toFixed(0)}</b></button>`}).join('')}</div>`;
+  if(x?.err)h+=`<div class="panel err">${esc(x.err)} <button class="s" onclick="runCat(${i})">재시도</button></div>`;
+  else if(!x)h+=`<div class="panel hint">${S.profile?'분석 중…':'대기 중'}</div>`;
+  else{const its=(x.items||[]).map((m,j)=>({...m,j})).filter(m=>!S.weak||(m.s??100)<60);
+   h+=`<div class="panel"><h2>${c[0]} <span style="color:${col(a)}">${a==null?'-':a.toFixed(0)}</span> <small class="hint">가중치 ×${W(i).toFixed(1)} · 지표 ${(x.items||[]).length}개</small></h2><p>${esc(x.sum)}</p>${x.good?.length?`<h3>잘한 점</h3>${ul(x.good)}`:''}${x.fix?.length?`<h3>핵심 개선안</h3>${ul(x.fix)}`:''}</div><div class="panel"><div class="tools"><button class="s" onclick="ex(1)">모두 펼치기</button><button class="s" onclick="ex(0)">모두 접기</button><label style="display:inline-flex;gap:6px;margin:0;align-items:center"><input type="checkbox" style="width:auto" ${S.weak?'checked':''} onchange="S.weak=this.checked;render()"> 60점 미만만</label></div>${its.map(m=>det(i+'-'+m.j,`<span style="flex:1">${esc(m.n)}${bar(m.s)}</span><b style="color:${col(m.s)}">${m.s??'-'}</b>`,`${m.q?`<div class="q">“${esc(m.q)}”</div>`:''}<div>${esc(m.c)}</div>${m.t?`<div class="box">${esc(m.t)}</div>`:''}`,false)).join('')||'<p class="hint">해당 지표 없음</p>'}</div>`}
+ }else{
+  if(p)h+=`<div class="panel"><h2>작품 프로필</h2><div class="chips">${[p.genre,...(p.sub||[]),...(p.mood||[]),...(p.tags||[])].map(x=>`<span class="chip">${esc(x)}</span>`).join('')}</div><p><b>로그라인</b> ${esc(p.logline)}</p><p><b>시점</b> ${esc(p.pov)} · <b>구간</b> ${esc(p.stage)}</p><p><b>타깃</b> ${esc(p.target)}</p><p><b>어울리는 연재</b> ${esc(p.platform)}</p><p class="q">적용 기준: ${esc(p.criteria)}</p></div>`;
+  if(p?.devices?.length)h+=`<div class="panel"><h2>발견된 서사 기법·용어</h2>${p.devices.map(d=>`<div class="box"><b>${esc(d.term)}</b> — ${esc(d.note)}<div class="q">${esc(d.where)}</div></div>`).join('')}</div>`;
+  h+=`<div class="panel"><h2>기계 계산 통계</h2><div class="st">${Object.entries(S.stats).map(([k,v])=>`<div>${k}<b>${esc(v)}</b></div>`).join('')}</div></div>`;
+ }
  $('out').innerHTML=h;
 }
-async function runCat(i){S.cats[i]=null;render();try{S.cats[i]=parse(await callAI(catPrompt(i)))}catch(e){S.cats[i]={err:e.message}}render()}
+async function runCat(i){S.cats[i]=null;render();try{S.cats[i]=parse(await callAI(catPrompt(i),0.3))}catch(e){S.cats[i]={err:e.message}}render()}
 const pool=async(ts,n)=>{let i=0;await Promise.all(Array(n).fill(0).map(async()=>{while(i<ts.length)await ts[i++]()}))};
 async function run(){
  const t=$('story').value.trim();if(!t)return alert('본문부터 넣어줘.');if(busy)return;
  if(t.length>80000&&!confirm('본문이 매우 길어. 요청이 모델 입력 한도에 걸릴 수 있는데 계속할까?'))return;
- busy=true;$('go').disabled=true;S={text:t,title:$('title').value.trim(),stats:stats(t),cats:[],profile:null,syn:null};render();
+ busy=true;$('go').disabled=true;S={text:t,title:$('title').value.trim(),stats:stats(t),cats:[],profile:null,syn:null,open:{},tab:'sum',sel:0};render();
  try{
-  prog('장르·분위기 판별, 평가 기준 설계 중…',5);S.profile=parse(await callAI(profPrompt()));render();
-  let n=0;await pool(CATS.map((_,i)=>async()=>{await runCat(i);prog(`영역별 세부 분석 ${++n}/${CATS.length}`,10+n*7)}),3);
-  prog('종합 평가 작성 중…',85);S.syn=parse(await callAI(synPrompt()));render();prog('분석 완료',100);
+  prog('장르·분위기 판별, 평가 기준 설계 중…',5);S.profile=parse(await callAI(profPrompt(),0.4));render();
+  let n=0;await pool(CATS.map((_,i)=>async()=>{await runCat(i);prog(`영역별 세부 분석 ${++n}/${CATS.length}`,10+n*(75/CATS.length))}),3);
+  prog('종합 평가 작성 중…',85);S.syn=parse(await callAI(synPrompt(),0.5));render();prog('분석 완료',100);
  }catch(e){$('status').textContent='오류: '+e.message}
  finally{busy=false;$('go').disabled=false}
 }
