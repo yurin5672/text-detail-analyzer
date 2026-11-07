@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>작품 정밀 분석기</title>
+<style>
+:root{--bg:#101116;--p:#191b24;--p2:#20232e;--l:#303442;--t:#ececf2;--m:#9da2b3;--a:#b6a0ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{padding:22px max(18px,calc((100vw - 1250px)/2));border-bottom:1px solid var(--l);background:#14151c}h1{font-size:23px;margin:0 0 4px}header p{margin:0;color:var(--m)}
+main{max-width:1250px;margin:20px auto;padding:0 16px;display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.5fr);gap:16px}
+.panel{background:var(--p);border:1px solid var(--l);border-radius:14px;padding:16px;margin-bottom:14px}
+h2{font-size:17px;margin:0 0 10px}h3{font-size:14px;margin:12px 0 6px;color:#d7d2ed}label{display:block;font-size:13px;color:var(--m);margin:9px 0 4px}
+input,select,textarea{width:100%;background:#101219;color:var(--t);border:1px solid var(--l);border-radius:8px;padding:9px;font:inherit;outline:none}textarea{min-height:300px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:9px}button{border:0;border-radius:9px;padding:10px 14px;font:600 14px system-ui;cursor:pointer;background:var(--a);color:#171321}
+button.s{background:var(--p2);color:var(--t);border:1px solid var(--l)}button:disabled{opacity:.45;cursor:wait}.hint{font-size:12px;color:var(--m)}
+.bar{height:5px;background:var(--l);border-radius:5px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;width:0;background:var(--a);transition:width .3s}#status{font-size:13px;color:#a7e2c1;margin-top:8px;min-height:20px}
+.head{display:grid;grid-template-columns:150px 1fr;gap:16px;align-items:center}.grade{text-align:center}.grade b{display:block;font-size:64px;line-height:1}.grade span{font-size:14px;color:var(--m)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{font-size:12px;padding:3px 9px;border-radius:99px;background:#302b42;color:#d7caff}
+.st{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}.st div{background:#12141c;border-radius:8px;padding:8px;font-size:12px;color:var(--m)}.st b{display:block;font-size:16px;color:var(--t)}
+details{border:1px solid var(--l);border-radius:10px;margin-bottom:9px;background:#151720}summary{cursor:pointer;padding:10px 12px;font-weight:700;display:flex;justify-content:space-between;gap:8px}
+.cb{padding:2px 12px 12px}.it{margin:9px 0}.it .n{display:flex;justify-content:space-between;font-size:13px}.it .tr{height:6px;background:var(--l);border-radius:4px;margin:3px 0}.it .tr i{display:block;height:100%;border-radius:4px}.it small{color:var(--m)}
+.box{background:#12141c;border-left:3px solid var(--a);padding:8px 11px;border-radius:6px;margin:7px 0;font-size:14px}.q{color:var(--m);font-size:13px}.err{color:#ff9b9b}ul{margin:5px 0;padding-left:20px}
+@media(max-width:900px){main,.grid2,.head{grid-template-columns:1fr}}
+</style></head><body>
+<header><h1>작품 정밀 분석기</h1><p>장르·분위기를 먼저 판별해 평가 기준을 맞춘 뒤, 10개 영역 100개 지표로 채점하고 등급과 개선안을 뽑아냄.</p></header>
+<main>
+<section>
+ <div class="panel"><h2>API 설정</h2>
+  <label>제공자</label><select id="provider"><option value="gemini">Google Gemini</option><option value="openai">OpenAI 호환</option></select>
+  <div id="epw" style="display:none"><label>API 주소</label><input id="endpoint" value="https://api.openai.com/v1/chat/completions"></div>
+  <div class="row"><div><label>모델명</label><input id="model" value="gemini-flash-latest"></div><div><label>API 키</label><input id="apiKey" type="password" placeholder="AIza... / sk-..."></div></div>
+  <p class="hint">키는 이 브라우저에서만 쓰여. 한 번 분석에 요청이 12번 이상 나가니 무료 키는 한도에 주의.</p></div>
+ <div class="panel"><h2>작품 투입</h2>
+  <label>제목 (선택)</label><input id="title">
+  <label>본문</label><textarea id="story" placeholder="분석할 글을 붙여 넣어. 1화 분량(3천~1만자)이 가장 정확해."></textarea>
+  <div class="actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button id="go">정밀 분석 시작</button><button class="s" id="cp">보고서 복사</button><button class="s" id="dl">JSON 저장</button></div>
+  <div id="status"></div><div class="bar"><i id="pg"></i></div></div>
+</section>
+<section id="out"><div class="panel hint">왼쪽에 글을 넣고 분석을 시작하면 결과가 여기에 쌓여.</div></section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CATS=[
+["훅·몰입","첫문장 훅,첫장면 흡인력,궁금증 유발,페이지터너성,클리프행어,긴장 곡선,템포,지루한 구간 없음,이탈 방지력,다음화 욕구"],
+["서사·구성","플롯 인과,구조 균형,갈등 설계,목표·동기 명확성,위기-해소 리듬,복선·회수,반전 효과,장면 전환,정보 공개 타이밍,엔딩 여운"],
+["인물","주인공 매력,입체성,동기 설득력,행동 일관성,성장·변화,조연 활용,악역·적대자,관계 케미,캐릭터 구별,이름·호칭 관리"],
+["대사","대사 자연스러움,말투 차별화,서브텍스트,정보 전달 효율,티키타카·유머,대사 비율,지문 균형,감정 대사,설명 대사 절제,명대사 잠재력"],
+["문장·문체","문장 리듬,어휘 풍부함,비유·묘사,문체 개성,군더더기 없음,어휘 반복 관리,시점 일관,번역투 없음,수식 절제,감각 묘사"],
+["가독성·기술","맞춤법,띄어쓰기,문단 길이,모바일 가독성,문장 길이 분포,호흡,오탈자,문장부호,장면 구분,서술·묘사·대사 균형"],
+["세계관·설정","설정 독창성,설정 일관성,설명 방식,세계 몰입,규칙 명확성,개연성,디테일·고증,설정 과적 없음,용어 체계,확장성"],
+["장르·클리셰","장르 문법 충실,클리셰 활용,클리셰 변주,독창성,트렌드 적합,신선함,타깃 일치,장르 혼합 균형,기대 충족,차별 포인트"],
+["감정·주제","감정 전달,카타르시스,공감,웃음,설렘,긴장감,슬픔·여운,주제 의식,메시지 자연스러움,정서 일관"],
+["상업성","연재 적합성,플랫폼 적합,제목·로그라인 매력,정주행성,팬덤 형성력,2차 확장성,댓글 유발,결제 전환력,완결 가능성,리텐션"]
+];
+const RUB="채점 기준: 0~100점. 50=연재 플랫폼 평균 수준, 70=상위권, 85 이상은 극소수 상위 작품에만 부여. 점수 인플레이션 금지. 제공된 본문 범위 안에서만 평가하고 해당 없으면 s는 null.";
+let S={},busy=false;
+const parse=s=>{s=s.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');const a=s.indexOf('{'),b=s.lastIndexOf('}');if(a<0||b<a)throw Error('JSON 응답을 찾지 못했어.');return JSON.parse(s.slice(a,b+1))};
+const prog=(m,p)=>{$('status').textContent=m;$('pg').style.width=p+'%'};
+async function callAI(prompt){
+ const key=$('apiKey').value.trim();let model=$('model').value.trim();
+ if(!key||!model)throw Error('API 설정을 먼저 입력해줘.');
+ const SYS='Return only valid JSON. Follow the instructions exactly. Write all text values in Korean.';
+ const gem=$('provider').value==='gemini';
+ const url=gem?`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model.replace(/^models\//,''))}:generateContent`:$('endpoint').value.trim();
+ const init=gem?{headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({systemInstruction:{parts:[{text:SYS}]},contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.6,responseMimeType:'application/json'}})}
+ :{headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify({model,temperature:0.6,messages:[{role:'system',content:SYS},{role:'user',content:prompt}]})};
+ const D=[3000,7000,15000,30000];let r,d;
+ for(let i=0;;i++){
+  r=await fetch(url,{method:'POST',...init});d=await r.json().catch(()=>({}));
+  if(r.ok||![429,500,503,504].includes(r.status)||i>=D.length)break;
+  $('status').textContent=`서버 혼잡, ${D[i]/1000}초 뒤 재시도 (${i+1}/${D.length})…`;await new Promise(f=>setTimeout(f,D[i]));
+ }
+ if(!r.ok)throw Error(d.error?.message||`API 오류 (${r.status})`);
+ if(gem){const c=d.candidates?.[0];if(d.promptFeedback?.blockReason)throw Error('요청 차단: '+d.promptFeedback.blockReason);const t=(c?.content?.parts||[]).filter(p=>!p.thought).map(p=>p.text||'').join('');if(!t)throw Error('빈 응답'+(c?.finishReason?` (${c.finishReason})`:''));return t}
+ return d.choices?.[0]?.message?.content||'';
+}
+function stats(t){
+ const ch=t.replace(/\s/g,'').length,P=t.split(/\n+/).filter(x=>x.trim()),
+ sn=t.split(/(?<=[.!?…。])["”'’]?\s+|\n+/).filter(x=>x.trim().length>1),L=sn.map(x=>x.length),
+ av=L.reduce((a,b)=>a+b,0)/(L.length||1),q=(t.match(/[“"][^”"\n]{1,300}[”"]/g)||[]).join('').length,
+ W=t.match(/[가-힣]{2,}/g)||[],F={};W.forEach(w=>F[w]=(F[w]||0)+1);
+ const top=Object.entries(F).filter(([w,c])=>w.length>=3&&c>=4).sort((a,b)=>b[1]-a[1]).slice(0,8);
+ const k=n=>(n/ch*1000).toFixed(1);
+ return{공백제외글자수:ch,문단수:P.length,문장수:sn.length,평균문장길이:av.toFixed(0)+'자',긴문장비율:(L.filter(x=>x>80).length/(L.length||1)*100).toFixed(0)+'%',평균문단길이:(ch/(P.length||1)).toFixed(0)+'자',대사비율:(q/t.length*100).toFixed(0)+'%',어휘다양성:(new Set(W).size/(W.length||1)).toFixed(2),'느낌표/천자':k((t.match(/!/g)||[]).length),'말줄임/천자':k((t.match(/…|\.{3}/g)||[]).length),예상읽기시간:Math.max(1,Math.round(ch/550))+'분',반복어:top.map(([w,c])=>w+'×'+c).join(', ')||'없음'};
+}
+const sline=()=>Object.entries(S.stats).map(([k,v])=>k+'='+v).join(', ');
+const head=()=>`작품 제목: ${S.title||'미상'}\n[참고용 기계 계산 통계] ${sline()}\n\n[작품 본문]\n${S.text}`;
+const profPrompt=()=>`너는 대중문학·웹소설 전문 편집자이자 서사학자다. 아래 글의 정체를 판별하고, 이 글에 맞는 평가 기준을 설계해라.
+- weights: 10개 영역(${CATS.map(c=>c[0]).join(', ')}) 순서의 가중치(0.3~2.0). 장르·분량·분위기에 따라 중요도를 다르게 줘라(예: 코미디는 대사·감정↑, 미스터리는 서사·복선↑, 프롤로그는 훅↑).
+- devices: 글에서 실제로 발견되는 서사 기법·수사 용어(예: 인 메디아스 레스, 체호프의 총, 신뢰할 수 없는 화자, 3막 구조, 클리셰 전복 등) 3~8개와 본문 근거.
+JSON: {"genre":"주장르","sub":["세부장르"],"tags":["키워드"],"mood":["분위기"],"pov":"시점","stage":"분량·회차 성격","target":"예상 타깃 독자층","platform":"어울리는 연재 방식","logline":"한 줄 요약","weights":[10개 숫자],"criteria":"이 작품에 적용할 평가 기준: 중요하게 볼 것/관대하게 볼 것 3~4문장","devices":[{"term":"용어","where":"본문 근거","note":"효과"}]}
+\n${head()}`;
+const catPrompt=i=>{const ms=CATS[i][1].split(',');return`너는 '${CATS[i][0]}' 영역 전문 심사위원이다. ${RUB}
+작품 프로필: ${JSON.stringify({genre:S.profile.genre,sub:S.profile.sub,mood:S.profile.mood,stage:S.profile.stage,criteria:S.profile.criteria})}
+이 프로필의 장르·분위기에 맞는 기준으로 아래 ${ms.length}개 지표를 순서대로 채점해라. 각 근거(c)에는 본문의 구체적 부분을 짚어 한두 문장으로 써라.
+지표: ${ms.join(' / ')}
+JSON: {"items":[{"n":"지표명","s":0~100 정수,"c":"근거"}],"sum":"영역 총평 2~3문장","fix":["구체적 개선안 2~3개"]}
+\n${head()}`};
+const synPrompt=()=>{const sc=CATS.map((c,i)=>{const x=S.cats[i];return x?.items?c[0]+': '+x.items.map(m=>m.n+'='+m.s).join(', '):''}).filter(Boolean).join('\n');
+return`너는 냉정하지만 건설적인 총괄 편집장이다. ${RUB}
+작품 프로필: ${JSON.stringify(S.profile)}
+영역별 채점 결과:\n${sc}
+이를 종합해 최종 평가를 작성해라. weaknesses의 quote는 본문 그대로의 짧은 구절, fix에는 수정 방향과 고쳐 쓴 예시 문장을 넣어라. 점수와 모순되지 않게 쓸 것.
+JSON: {"verdict":"한 줄 평결","summary":"총평 4~6문장","strengths":[{"t":"강점","d":"설명"}],"weaknesses":[{"t":"문제점","d":"설명","quote":"본문 구절","fix":"개선안"}],"plan":["우선순위 순 개선 액션 5개"],"readers":"좋아할 독자와 이탈할 독자"}
+강점 5개, 약점 6~8개.\n\n${head()}`};
+const avg=i=>{const c=S.cats?.[i];if(!c?.items)return null;const v=c.items.map(x=>x.s).filter(x=>typeof x==='number');return v.length?v.reduce((a,b)=>a+b,0)/v.length:null};
+const W=i=>{const w=+S.profile?.weights?.[i];return w>=.3&&w<=2?w:1};
+function total(){const a=CATS.map((_,i)=>avg(i)),eng=((a[0]??0)+(a[8]??0))/2,f=eng>=80?.5:eng>=70?.75:1;let s=0,w=0;a.forEach((v,i)=>{if(v==null)return;const k=W(i)*(i==5?f:1);s+=v*k;w+=k});return{av:a,f,score:w?s/w:null}}
+const G=[[92,'S'],[85,'A+'],[80,'A'],[75,'B+'],[70,'B'],[65,'C+'],[60,'C'],[50,'D'],[0,'F']];
+const grade=s=>G.find(g=>s>=g[0])[1];const col=s=>`hsl(${Math.max(0,Math.min(100,s))*1.2},60%,62%)`;
+function radar(av){const n=av.length,pt=(i,v)=>{const a=-Math.PI/2+i*2*Math.PI/n;return[150+v*1.05*Math.cos(a),150+v*1.05*Math.sin(a)]};
+ const g=[25,50,75,100].map(l=>`<polygon points="${av.map((_,i)=>pt(i,l).join(',')).join(' ')}" fill="none" stroke="#303442"/>`).join('');
+ const lb=CATS.map((c,i)=>{const[x,y]=pt(i,125);return`<text x="${x}" y="${y}" text-anchor="middle" font-size="10" fill="#9da2b3">${c[0]}</text>`}).join('');
+ return`<svg viewBox="-30 -5 360 310">${g}<polygon points="${av.map((v,i)=>pt(i,v||0).join(',')).join(' ')}" fill="#b6a0ff55" stroke="#b6a0ff"/>${lb}</svg>`}
+function render(){
+ if(!S.stats)return;const T=total(),p=S.profile,y=S.syn;let h='';
+ if(T.score!=null){const s=T.score;h+=`<div class="panel head"><div class="grade"><b style="color:${col(s)}">${grade(s)}</b><span>${s.toFixed(1)} / 100</span></div><div><h2>${esc(S.title||'분석 결과')}</h2>${y?`<div class="box">${esc(y.verdict)}</div><p>${esc(y.summary)}</p>`:'<p class="hint">종합 평가 작성 중…</p>'}<p class="hint">점수는 연재 플랫폼 평균 수준을 50으로 둔 AI의 상대 평가야.${T.f<1?` 몰입·감정 점수가 높아 가독성·기술 항목 가중치를 ×${T.f} 로 낮췄어(재밌으면 사소한 흠은 봐주는 보정).`:''}</p></div></div>`}
+ if(p)h+=`<div class="panel"><h2>작품 프로필</h2><div class="grid2"><div>${radar(T.av)}</div><div><div class="chips">${[p.genre,...(p.sub||[]),...(p.mood||[]),...(p.tags||[])].map(x=>`<span class="chip">${esc(x)}</span>`).join('')}</div><p><b>로그라인</b> ${esc(p.logline)}</p><p><b>시점</b> ${esc(p.pov)} · <b>구간</b> ${esc(p.stage)}</p><p><b>타깃</b> ${esc(p.target)}</p><p><b>어울리는 연재</b> ${esc(p.platform)}</p><p class="q">적용 기준: ${esc(p.criteria)}</p></div></div></div>`;
+ h+=`<div class="panel"><h2>기계 계산 통계</h2><div class="st">${Object.entries(S.stats).map(([k,v])=>`<div>${k}<b>${esc(v)}</b></div>`).join('')}</div></div>`;
+ if(p?.devices?.length)h+=`<div class="panel"><h2>발견된 서사 기법·용어</h2>${p.devices.map(d=>`<div class="box"><b>${esc(d.term)}</b> — ${esc(d.note)}<div class="q">${esc(d.where)}</div></div>`).join('')}</div>`;
+ const all=[];CATS.forEach((c,i)=>S.cats[i]?.items?.forEach(m=>typeof m.s==='number'&&all.push({...m,c:c[0]})));
+ if(all.length>9){all.sort((a,b)=>a.s-b.s);const li=l=>l.map(m=>`<li>${esc(m.c)} · ${esc(m.n)} <b style="color:${col(m.s)}">${m.s}</b></li>`).join('');h+=`<div class="panel"><div class="grid2"><div><h3>가장 약한 지표 TOP 10</h3><ul>${li(all.slice(0,10))}</ul></div><div><h3>가장 강한 지표 TOP 10</h3><ul>${li(all.slice(-10).reverse())}</ul></div></div></div>`}
+ if(y)h+=`<div class="panel"><h2>개선 포인트</h2>${(y.weaknesses||[]).map(w=>`<div class="box"><b>${esc(w.t)}</b><br>${esc(w.d)}${w.quote?`<div class="q">“${esc(w.quote)}”</div>`:''}<div>→ ${esc(w.fix)}</div></div>`).join('')}<h3>우선순위 액션 플랜</h3><ol>${(y.plan||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ol><h3>강점</h3>${(y.strengths||[]).map(w=>`<div class="box"><b>${esc(w.t)}</b> ${esc(w.d)}</div>`).join('')}<h3>독자 반응 예상</h3><p>${esc(y.readers)}</p></div>`;
+ h+=`<div class="panel"><h2>영역별 세부 분석 (지표 ${CATS.reduce((n,c)=>n+c[1].split(',').length,0)}개)</h2>`+CATS.map((c,i)=>{const x=S.cats[i],a=avg(i);
+  if(x?.err)return`<details open><summary>${c[0]}<span class="err">실패</span></summary><div class="cb err">${esc(x.err)} <button class="s" onclick="runCat(${i})">재시도</button></div></details>`;
+  if(!x)return`<details><summary>${c[0]}<span class="hint">${S.profile?'분석 중…':'대기'}</span></summary></details>`;
+  return`<details><summary>${c[0]} <span class="hint">×${W(i).toFixed(1)}</span><span style="color:${col(a)}">${a==null?'-':a.toFixed(0)}</span></summary><div class="cb"><p>${esc(x.sum)}</p>${(x.items||[]).map(m=>`<div class="it"><div class="n"><span>${esc(m.n)}</span><b style="color:${col(m.s)}">${m.s??'-'}</b></div><div class="tr"><i style="width:${m.s||0}%;background:${col(m.s)}"></i></div><small>${esc(m.c)}</small></div>`).join('')}${x.fix?.length?`<h3>개선안</h3><ul>${x.fix.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:''}</div></details>`}).join('')+'</div>';
+ $('out').innerHTML=h;
+}
+async function runCat(i){S.cats[i]=null;render();try{S.cats[i]=parse(await callAI(catPrompt(i)))}catch(e){S.cats[i]={err:e.message}}render()}
+const pool=async(ts,n)=>{let i=0;await Promise.all(Array(n).fill(0).map(async()=>{while(i<ts.length)await ts[i++]()}))};
+async function run(){
+ const t=$('story').value.trim();if(!t)return alert('본문부터 넣어줘.');if(busy)return;
+ if(t.length>80000&&!confirm('본문이 매우 길어. 요청이 모델 입력 한도에 걸릴 수 있는데 계속할까?'))return;
+ busy=true;$('go').disabled=true;S={text:t,title:$('title').value.trim(),stats:stats(t),cats:[],profile:null,syn:null};render();
+ try{
+  prog('장르·분위기 판별, 평가 기준 설계 중…',5);S.profile=parse(await callAI(profPrompt()));render();
+  let n=0;await pool(CATS.map((_,i)=>async()=>{await runCat(i);prog(`영역별 세부 분석 ${++n}/${CATS.length}`,10+n*7)}),3);
+  prog('종합 평가 작성 중…',85);S.syn=parse(await callAI(synPrompt()));render();prog('분석 완료',100);
+ }catch(e){$('status').textContent='오류: '+e.message}
+ finally{busy=false;$('go').disabled=false}
+}
+function report(){const T=total(),y=S.syn||{};return`[${S.title||'작품'}] 등급 ${T.score!=null?grade(T.score)+' ('+T.score.toFixed(1)+')':'-'}\n${y.verdict||''}\n\n${y.summary||''}\n\n[개선 액션]\n${(y.plan||[]).map((x,i)=>`${i+1}. ${x}`).join('\n')}\n\n[약점]\n${(y.weaknesses||[]).map(w=>`- ${w.t}: ${w.d}\n  → ${w.fix}`).join('\n')}\n\n[영역별]\n${CATS.map((c,i)=>{const x=S.cats[i];return x?.items?`■ ${c[0]} (${avg(i).toFixed(0)})\n`+x.items.map(m=>`  ${m.n} ${m.s}: ${m.c}`).join('\n'):''}).join('\n')}`}
+$('go').onclick=run;
+$('cp').onclick=async()=>{if(!S.cats?.length)return alert('복사할 결과가 없어.');await navigator.clipboard.writeText(report());$('status').textContent='보고서를 복사했어.'};
+$('dl').onclick=()=>{if(!S.cats?.length)return alert('저장할 결과가 없어.');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download='작품분석.json';a.click();URL.revokeObjectURL(a.href)};
+$('provider').onchange=()=>{const g=$('provider').value==='gemini';$('epw').style.display=g?'none':'block';$('model').value=g?'gemini-flash-latest':''};
+</script></body></html>
