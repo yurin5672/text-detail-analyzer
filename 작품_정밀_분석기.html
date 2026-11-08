@@ -20,19 +20,22 @@ details{border:1px solid var(--l);border-radius:10px;margin-bottom:9px;backgroun
 .tabs{position:sticky;top:0;z-index:5;background:var(--bg);padding:8px 0;display:flex;gap:6px;flex-wrap:wrap}.pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.pill{background:var(--p2);color:var(--t);border:1px solid var(--l);padding:6px 11px;font-size:13px}.pill.on{border-color:var(--a);background:#2b2540}.tools{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
 main>section:first-child{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto}
 @media(max-width:900px){main,.grid2,.head{grid-template-columns:1fr}main>section:first-child{position:static;max-height:none}}
+.ep{display:flex;justify-content:space-between;gap:8px;padding:7px 10px;border:1px solid var(--l);border-radius:8px;margin:5px 0;cursor:pointer;font-size:14px}.ep.on{border-color:var(--a);background:#2b2540}#lib .eps{max-height:200px;overflow:auto;margin-top:8px}
+.hm{border-collapse:collapse;font-size:12px;width:100%}.hm td,.hm th{padding:4px 6px;border:1px solid var(--l);text-align:center}.hm td:first-child{text-align:left;white-space:nowrap}.hm th{cursor:pointer;color:var(--m)}
 </style></head><body>
-<header><h1>작품 정밀 분석기</h1><p>장르·분위기를 먼저 판별해 평가 기준을 맞춘 뒤, 14개 영역 160개 지표로 채점하고 등급과 개선안을 뽑아냄.</p></header>
+<header><h1>작품 정밀 분석기</h1><p>장르·분위기를 먼저 판별해 평가 기준을 맞춘 뒤, 15개 영역 170개 지표로 채점하고 등급과 개선안을 뽑아냄.</p></header>
 <main>
 <section>
+ <div class="panel"><h2>내 서재 <small class="hint">이 기기(브라우저)에 저장</small></h2><div id="lib"></div></div>
  <div class="panel"><h2>API 설정</h2>
   <label>제공자</label><select id="provider"><option value="gemini">Google Gemini</option><option value="openai">OpenAI 호환</option></select>
   <div id="epw" style="display:none"><label>API 주소</label><input id="endpoint" value="https://api.openai.com/v1/chat/completions"></div>
   <div class="row"><div><label>모델명</label><input id="model" value="gemini-flash-latest"></div><div><label>API 키</label><input id="apiKey" type="password" placeholder="AIza... / sk-..."></div></div>
   <p class="hint">키는 이 브라우저에서만 쓰여. 한 번 분석에 요청이 12번 이상 나가니 무료 키는 한도에 주의.</p></div>
  <div class="panel"><h2>작품 투입</h2>
-  <label>제목 (선택)</label><input id="title">
+  <label>회차 이름</label><input id="title" placeholder="예: 3화">
   <label>본문</label><textarea id="story" placeholder="분석할 글을 붙여 넣어. 1화 분량(3천~1만자)이 가장 정확해."></textarea>
-  <div class="actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button id="go">정밀 분석 시작</button><button class="s" id="cp">보고서 복사</button><button class="s" id="dl">JSON 저장</button></div>
+  <div class="actions" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button id="go">정밀 분석 시작</button><button class="s" id="cp">보고서 복사</button><button class="s" id="dl">서재 백업(JSON)</button><button class="s" id="imp">백업 불러오기</button></div>
   <div id="status"></div><div class="bar"><i id="pg"></i></div></div>
 </section>
 <section id="out"><div class="panel hint">왼쪽에 글을 넣고 분석을 시작하면 결과가 여기에 쌓여.</div></section>
@@ -57,15 +60,17 @@ EX.forEach((e,i)=>CATS[i][1]+=','+e);
 CATS.push(["시점·서술","시점 안정성,서술 거리 조절,내적 독백 비중,정보 제한 활용,화자 신뢰도,시제 일관,서술 속도 조절,보여주기 vs 말하기,시간 구조,서술 목소리"],
 ["독자 경험·심리","감정이입 속도,대리만족,카타르시스 타이밍,기대-배신 균형,인지 부하 관리,몰입 방해 요소 없음,공감 가능한 결핍,호기심 간격 설계,정서 보상,재독 가치"],
 ["장면·연출","장면 목적 명확성,장면 길이 균형,공간 묘사,시간 흐름 처리,사건·액션 연출,심리 묘사,분위기 조성,장면 전환 연결,시각적 이미지,긴장-이완 배치"],
-["톤·완성도","톤 일관성,유머·진지 균형,표현 수위 적정,편견 표현 회피,모방·답습 위험 없음,퇴고 완성도,분량 적정,제목-본문 일치,마무리 처리,전반 완성도"]);
+["톤·완성도","톤 일관성,유머·진지 균형,표현 수위 적정,편견 표현 회피,모방·답습 위험 없음,퇴고 완성도,분량 적정,제목-본문 일치,마무리 처리,전반 완성도"],
+["회차 연계","설정 일관성,복선 회수,인물 행동 일관성,인물 변화 누적,전개 속도 균형,떡밥 추가·회수 균형,회차 엔딩-시작 연결,반복 패턴 피로도,클리프행어 연쇄,시리즈 흡인력"]);
 const RUB="채점 기준: 0~100점. 0~29 심각한 결함, 30~49 미흡, 50~59 연재 플랫폼 평균(50=평균), 60~69 양호, 70~79 상위권, 80~89 매우 우수, 90 이상은 극소수. 점수 인플레이션 금지. 지표를 비슷한 점수로 뭉치지 말고 근거에 따라 차이를 둘 것. 본문에서 확인할 수 없는 지표는 s를 null로 하고 c에 이유를 쓸 것. 제공된 본문 범위 안에서만 평가.";
 let S={},busy=false;
-const parse=s=>{s=s.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');const a=s.indexOf('{'),b=s.lastIndexOf('}');if(a<0||b<a)throw Error('JSON 응답을 찾지 못했어.');return JSON.parse(s.slice(a,b+1))};
+const parse=s=>{s=s.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');const a=s.indexOf('{'),b=s.lastIndexOf('}');if(a<0||b<a)throw Error('JSON 응답을 찾지 못했어.');return JSON.parse(s.slice(a,b+1).replace(/,\s*([}\]])/g,'$1'))};
+async function callJ(p,t){let e;for(let i=0;i<3;i++){try{return parse(await callAI(p,t))}catch(x){e=x;if(!(x instanceof SyntaxError||/JSON/.test(x.message)))throw x;$('status').textContent=`응답 형식 오류, 재요청 (${i+1}/3)…`}}throw e}
 const prog=(m,p)=>{$('status').textContent=m;$('pg').style.width=p+'%'};
 async function callAI(prompt,temp=0.4){
  const key=$('apiKey').value.trim();let model=$('model').value.trim();
  if(!key||!model)throw Error('API 설정을 먼저 입력해줘.');
- const SYS='Return only valid JSON. Follow the instructions exactly. Write all text values in Korean.';
+ const SYS='Return only valid JSON. Follow the instructions exactly. Write all text values in Korean. Never use double quotes inside string values (use single quotes or 「」 instead), no trailing commas, no line breaks inside strings.';
  const gem=$('provider').value==='gemini';
  const url=gem?`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model.replace(/^models\//,''))}:generateContent`:$('endpoint').value.trim();
  const init=gem?{headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({systemInstruction:{parts:[{text:SYS}]},contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:temp,responseMimeType:'application/json'}})}
@@ -90,15 +95,15 @@ function stats(t){
  return{공백제외글자수:ch,문단수:P.length,문장수:sn.length,평균문장길이:av.toFixed(0)+'자',긴문장비율:(L.filter(x=>x>80).length/(L.length||1)*100).toFixed(0)+'%',평균문단길이:(ch/(P.length||1)).toFixed(0)+'자',대사비율:(q/t.length*100).toFixed(0)+'%',어휘다양성:(new Set(W).size/(W.length||1)).toFixed(2),'느낌표/천자':k((t.match(/!/g)||[]).length),'말줄임/천자':k((t.match(/…|\.{3}/g)||[]).length),예상읽기시간:Math.max(1,Math.round(ch/550))+'분',반복어:top.map(([w,c])=>w+'×'+c).join(', ')||'없음'};
 }
 const sline=()=>Object.entries(S.stats).map(([k,v])=>k+'='+v).join(', ');
-const head=()=>`작품 제목: ${S.title||'미상'}\n[참고용 기계 계산 통계] ${sline()}\n\n[작품 본문]\n${S.text}`;
+const head=()=>`작품 제목: ${S.title||'미상'}\n[참고용 기계 계산 통계] ${sline()}\n${S.prev?`[같은 작품의 이전 회차 요약: 연속성·복선·설정 일관성 평가 때 참고. 평가 대상은 아래 본문이다]\n${S.prev}\n`:''}\n[작품 본문]\n${S.text}`;
 const profPrompt=()=>`너는 대중문학·웹소설 전문 편집자이자 서사학자다. 아래 글의 정체를 판별하고, 이 글에 맞는 평가 기준을 설계해라.
 - weights: ${CATS.length}개 영역(${CATS.map(c=>c[0]).join(', ')}) 순서의 가중치(0.3~2.0). 장르·분량·분위기에 따라 중요도를 다르게 줘라(예: 코미디는 대사·감정↑, 미스터리는 서사·복선↑, 프롤로그는 훅↑).
 - devices: 글에서 실제로 발견되는 서사 기법·수사 용어(예: 인 메디아스 레스, 체호프의 총, 신뢰할 수 없는 화자, 3막 구조, 클리셰 전복 등) 3~8개와 본문 근거.
-JSON: {"genre":"주장르","sub":["세부장르"],"tags":["키워드"],"mood":["분위기"],"pov":"시점","stage":"분량·회차 성격","target":"예상 타깃 독자층","platform":"어울리는 연재 방식","logline":"한 줄 요약","weights":[${CATS.length}개 숫자],"criteria":"이 작품에 적용할 평가 기준: 중요하게 볼 것/관대하게 볼 것 3~4문장","devices":[{"term":"용어","where":"본문 근거","note":"효과"}]}
+JSON: {"genre":"주장르","sub":["세부장르"],"tags":["키워드"],"mood":["분위기"],"pov":"시점","stage":"분량·회차 성격","target":"예상 타깃 독자층","platform":"어울리는 연재 방식","logline":"한 줄 요약","weights":[${CATS.length}개 숫자],"criteria":"이 작품에 적용할 평가 기준: 중요하게 볼 것/관대하게 볼 것 3~4문장","devices":[{"term":"용어","where":"본문 근거","note":"효과"}],"digest":"이 회차 줄거리 4~6문장 + 핵심 인물·설정·미해결 떡밥(다음 회차 평가용 요약, 500자 이내, 줄바꿈 금지)"}
 \n${head()}`;
 const catPrompt=i=>{const ms=CATS[i][1].split(',');return`너는 '${CATS[i][0]}' 영역 전문 심사위원이다. ${RUB}
 작품 프로필: ${JSON.stringify({genre:S.profile.genre,sub:S.profile.sub,mood:S.profile.mood,stage:S.profile.stage,criteria:S.profile.criteria})}
-이 프로필의 장르·분위기에 맞는 기준으로 아래 ${ms.length}개 지표를 순서대로 채점해라. 반드시 본문을 근거로 판단하고, 지표마다 실제 본문 구절을 q에 인용해라. 이 지표에서 가장 큰 장점이나 결함을 구체적으로 짚어라.
+${i==14?'이전 회차 요약과 이번 본문을 직접 대조해 모순·회수·변화를 짚어라. ':''}이 프로필의 장르·분위기에 맞는 기준으로 아래 ${ms.length}개 지표를 순서대로 채점해라. 반드시 본문을 근거로 판단하고, 지표마다 실제 본문 구절을 q에 인용해라. 이 지표에서 가장 큰 장점이나 결함을 구체적으로 짚어라.
 지표: ${ms.join(' / ')}
 JSON: {"items":[{"n":"지표명","s":0~100 정수,"q":"근거가 된 본문 구절(20자 내외, 없으면 빈 문자열)","c":"판단 근거 1~2문장","t":"80점 미만일 때 구체적 수정 방법 1문장, 아니면 빈 문자열"}],"sum":"영역 총평 2~3문장","good":["잘한 점 2개"],"fix":["핵심 개선안 3개"]}
 \n${head()}`};
@@ -109,9 +114,9 @@ return`너는 냉정하지만 건설적인 총괄 편집장이다. ${RUB}
 이를 종합해 최종 평가를 작성해라. weaknesses의 quote는 본문 그대로의 짧은 구절, fix에는 수정 방향과 고쳐 쓴 예시 문장을 넣어라. 점수와 모순되지 않게 쓸 것.
 JSON: {"verdict":"한 줄 평결","summary":"총평 4~6문장","strengths":[{"t":"강점","d":"설명"}],"weaknesses":[{"t":"문제점","d":"설명","quote":"본문 구절","fix":"개선안"}],"plan":["우선순위 순 개선 액션 5개"],"readers":"좋아할 독자와 이탈할 독자"}
 강점 5개, 약점 6~8개.\n\n${head()}`};
-const avg=i=>{const c=S.cats?.[i];if(!c?.items)return null;const v=c.items.map(x=>x.s).filter(x=>typeof x==='number');return v.length?v.reduce((a,b)=>a+b,0)/v.length:null};
-const W=i=>{const w=+S.profile?.weights?.[i];return w>=.3&&w<=2?w:1};
-function total(){const a=CATS.map((_,i)=>avg(i)),eng=((a[0]??0)+(a[8]??0))/2,f=eng>=80?.5:eng>=70?.75:1;let s=0,w=0;a.forEach((v,i)=>{if(v==null)return;const k=W(i)*(i==5?f:1);s+=v*k;w+=k});return{av:a,f,score:w?s/w:null}}
+const avg=(i,e=S)=>{const c=e.cats?.[i];if(!c?.items)return null;const v=c.items.map(x=>x.s).filter(x=>typeof x==='number');return v.length?v.reduce((a,b)=>a+b,0)/v.length:null};
+const W=(i,e=S)=>{const w=+e.profile?.weights?.[i];return w>=.3&&w<=2?w:1};
+function total(e=S){const a=CATS.map((_,i)=>avg(i,e)),eng=((a[0]??0)+(a[8]??0))/2,f=eng>=80?.5:eng>=70?.75:1;let s=0,w=0;a.forEach((v,i)=>{if(v==null)return;const k=W(i,e)*(i==5?f:1);s+=v*k;w+=k});return{av:a,f,score:w?s/w:null}}
 const G=[[92,'S'],[85,'A+'],[80,'A'],[75,'B+'],[70,'B'],[65,'C+'],[60,'C'],[50,'D'],[0,'F']];
 const grade=s=>G.find(g=>s>=g[0])[1];const col=s=>`hsl(${Math.max(0,Math.min(100,s))*1.2},60%,62%)`;
 function radar(av){const n=av.length,pt=(i,v)=>{const a=-Math.PI/2+i*2*Math.PI/n;return[150+v*1.05*Math.cos(a),150+v*1.05*Math.sin(a)]};
@@ -124,10 +129,10 @@ const ex=v=>{(S.cats[S.sel]?.items||[]).forEach((_,j)=>S.open[S.sel+'-'+j]=!!v);
 const bar=v=>`<div class="tr"><i style="width:${v||0}%;background:${col(v)}"></i></div>`;
 const ul=l=>`<ul>${l.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`;
 function render(){
- if(!S.stats)return;const T=total(),p=S.profile,y=S.syn;
- let h=`<div class="tabs">${[['sum','요약'],['fix','개선점'],['cat','영역별 상세'],['info','프로필·통계']].map(t=>`<button class="${S.tab==t[0]?'':'s'}" onclick="go('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
+ renderLib();persist();const T=total(),p=S.profile,y=S.syn;
+ let h=`<div class="tabs">${[['sum','요약'],['fix','개선점'],['cat','영역별 상세'],['info','프로필·통계'],['work','작품 전체']].map(t=>`<button class="${S.tab==t[0]?'':'s'}" onclick="go('${t[0]}')">${t[1]}</button>`).join('')}</div>`;
  const all=[];CATS.forEach((c,i)=>S.cats[i]?.items?.forEach(m=>typeof m.s==='number'&&all.push({...m,c:c[0]})));
- if(S.tab=='sum'){
+ if(S.tab=='work')h+=workTab();else if(!S.stats)h+='<div class="panel hint">본문을 넣고 정밀 분석을 시작하면 결과가 여기에 나와.</div>';else if(S.tab=='sum'){
   if(T.score!=null){const s=T.score;h+=`<div class="panel head"><div class="grade"><b style="color:${col(s)}">${grade(s)}</b><span>${s.toFixed(1)} / 100</span></div><div><h2>${esc(S.title||'분석 결과')}</h2>${y?`<div class="box">${esc(y.verdict)}</div><p>${esc(y.summary)}</p>`:'<p class="hint">종합 평가 작성 중…</p>'}<p class="hint">점수는 연재 플랫폼 평균 수준을 50으로 둔 AI의 상대 평가야.${T.f<1?` 몰입·감정 점수가 높아 가독성·기술 항목 가중치를 ×${T.f} 로 낮췄어(재밌으면 사소한 흠은 봐주는 보정).`:''}</p></div></div>`}
   h+=`<div class="panel"><h2>영역별 점수 <small class="hint">클릭하면 상세</small></h2><div class="grid2"><div>${radar(T.av)}</div><div>${CATS.map((c,i)=>{const a=T.av[i];return`<div class="it" style="cursor:pointer" onclick="go('cat',${i})"><div class="n"><span>${c[0]} <small>×${W(i).toFixed(1)}</small></span><b style="color:${col(a)}">${a==null?'-':a.toFixed(0)}</b></div>${bar(a)}</div>`}).join('')}</div></div></div>`;
   if(all.length>9){all.sort((a,b)=>a.s-b.s);const li=l=>l.map(m=>`<li>${esc(m.c)} · ${esc(m.n)} <b style="color:${col(m.s)}">${m.s}</b></li>`).join('');h+=`<div class="panel"><div class="grid2"><div><h3>가장 약한 지표 TOP 10</h3><ul>${li(all.slice(0,10))}</ul></div><div><h3>가장 강한 지표 TOP 10</h3><ul>${li(all.slice(-10).reverse())}</ul></div></div></div>`}
@@ -136,9 +141,9 @@ function render(){
   else h+=`<div class="panel"><h2>약점과 개선안</h2>${(y.weaknesses||[]).map((w,j)=>det('w'+j,esc(w.t),`${esc(w.d)}${w.quote?`<div class="q">“${esc(w.quote)}”</div>`:''}<div class="box">→ ${esc(w.fix)}</div>`,j<3)).join('')}</div><div class="panel"><h2>우선순위 액션 플랜</h2><ol>${(y.plan||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ol></div><div class="panel"><h2>강점</h2>${(y.strengths||[]).map((w,j)=>det('g'+j,esc(w.t),esc(w.d),false)).join('')}</div><div class="panel"><h2>독자 반응 예상</h2><p>${esc(y.readers)}</p></div>`;
  }else if(S.tab=='cat'){
   const i=S.sel,c=CATS[i],x=S.cats[i],a=T.av[i];
-  h+=`<div class="pills">${CATS.map((c,k)=>{const v=T.av[k],e=S.cats[k]?.err;return`<button class="pill ${k==i?'on':''}" onclick="go('cat',${k})">${c[0]} <b style="color:${e?'#ff9b9b':col(v)}">${e?'!':v==null?'…':v.toFixed(0)}</b></button>`}).join('')}</div>`;
+  h+=`<div class="pills">${CATS.map((c,k)=>{const v=T.av[k],e=S.cats[k]?.err;return`<button class="pill ${k==i?'on':''}" onclick="go('cat',${k})">${c[0]} <b style="color:${e?'#ff9b9b':col(v)}">${e?'!':v==null?(k==14&&!S.np?'-':'…'):v.toFixed(0)}</b></button>`}).join('')}</div>`;
   if(x?.err)h+=`<div class="panel err">${esc(x.err)} <button class="s" onclick="runCat(${i})">재시도</button></div>`;
-  else if(!x)h+=`<div class="panel hint">${S.profile?'분석 중…':'대기 중'}</div>`;
+  else if(!x)h+=`<div class="panel hint">${i==14&&!S.np?'이전 회차 분석이 없어 비교 대상이 없어서 건너뛰었어. 앞 회차를 먼저 분석하면 연계 평가가 돼.':S.profile?'분석 중…':'대기 중'}</div>`;
   else{const its=(x.items||[]).map((m,j)=>({...m,j})).filter(m=>!S.weak||(m.s??100)<60);
    h+=`<div class="panel"><h2>${c[0]} <span style="color:${col(a)}">${a==null?'-':a.toFixed(0)}</span> <small class="hint">가중치 ×${W(i).toFixed(1)} · 지표 ${(x.items||[]).length}개</small></h2><p>${esc(x.sum)}</p>${x.good?.length?`<h3>잘한 점</h3>${ul(x.good)}`:''}${x.fix?.length?`<h3>핵심 개선안</h3>${ul(x.fix)}`:''}</div><div class="panel"><div class="tools"><button class="s" onclick="ex(1)">모두 펼치기</button><button class="s" onclick="ex(0)">모두 접기</button><label style="display:inline-flex;gap:6px;margin:0;align-items:center"><input type="checkbox" style="width:auto" ${S.weak?'checked':''} onchange="S.weak=this.checked;render()"> 60점 미만만</label></div>${its.map(m=>det(i+'-'+m.j,`<span style="flex:1">${esc(m.n)}${bar(m.s)}</span><b style="color:${col(m.s)}">${m.s??'-'}</b>`,`${m.q?`<div class="q">“${esc(m.q)}”</div>`:''}<div>${esc(m.c)}</div>${m.t?`<div class="box">${esc(m.t)}</div>`:''}`,false)).join('')||'<p class="hint">해당 지표 없음</p>'}</div>`}
  }else{
@@ -148,22 +153,54 @@ function render(){
  }
  $('out').innerHTML=h;
 }
-async function runCat(i){S.cats[i]=null;render();try{S.cats[i]=parse(await callAI(catPrompt(i),0.3))}catch(e){S.cats[i]={err:e.message}}render()}
+async function runCat(i){S.cats[i]=null;render();try{S.cats[i]=await callJ(catPrompt(i),0.3)}catch(e){S.cats[i]={err:e.message}}render()}
 const pool=async(ts,n)=>{let i=0;await Promise.all(Array(n).fill(0).map(async()=>{while(i<ts.length)await ts[i++]()}))};
 async function run(){
  const t=$('story').value.trim();if(!t)return alert('본문부터 넣어줘.');if(busy)return;
  if(t.length>80000&&!confirm('본문이 매우 길어. 요청이 모델 입력 한도에 걸릴 수 있는데 계속할까?'))return;
- busy=true;$('go').disabled=true;S={text:t,title:$('title').value.trim(),stats:stats(t),cats:[],profile:null,syn:null,open:{},tab:'sum',sel:0};render();
+ busy=true;$('go').disabled=true;const pv=prevEps();Object.assign(S,{text:t,name:$('title').value.trim(),title:cw().title+' '+$('title').value.trim(),stats:stats(t),cats:[],profile:null,syn:null,open:{},tab:'sum',sel:0,np:pv.length,prev:pv.map(e=>`[${e.name}] ${e.profile.digest}`).join('\n')});render();
  try{
-  prog('장르·분위기 판별, 평가 기준 설계 중…',5);S.profile=parse(await callAI(profPrompt(),0.4));render();
-  let n=0;await pool(CATS.map((_,i)=>async()=>{await runCat(i);prog(`영역별 세부 분석 ${++n}/${CATS.length}`,10+n*(75/CATS.length))}),3);
-  prog('종합 평가 작성 중…',85);S.syn=parse(await callAI(synPrompt(),0.5));render();prog('분석 완료',100);
+  prog('장르·분위기 판별, 평가 기준 설계 중…',5);S.profile=await callJ(profPrompt(),0.4);render();
+  let n=0;await pool(CATS.map((_,i)=>async()=>{if(i!=14||S.np)await runCat(i);prog(`영역별 세부 분석 ${++n}/${CATS.length}`,10+n*(75/CATS.length))}),3);
+  prog('종합 평가 작성 중…',85);S.syn=await callJ(synPrompt(),0.5);render();prog('분석 완료',100);
  }catch(e){$('status').textContent='오류: '+e.message}
  finally{busy=false;$('go').disabled=false}
 }
 function report(){const T=total(),y=S.syn||{};return`[${S.title||'작품'}] 등급 ${T.score!=null?grade(T.score)+' ('+T.score.toFixed(1)+')':'-'}\n${y.verdict||''}\n\n${y.summary||''}\n\n[개선 액션]\n${(y.plan||[]).map((x,i)=>`${i+1}. ${x}`).join('\n')}\n\n[약점]\n${(y.weaknesses||[]).map(w=>`- ${w.t}: ${w.d}\n  → ${w.fix}`).join('\n')}\n\n[영역별]\n${CATS.map((c,i)=>{const x=S.cats[i];return x?.items?`■ ${c[0]} (${avg(i).toFixed(0)})\n`+x.items.map(m=>`  ${m.n} ${m.s}: ${m.c}`).join('\n'):''}).join('\n')}`}
 $('go').onclick=run;
 $('cp').onclick=async()=>{if(!S.cats?.length)return alert('복사할 결과가 없어.');await navigator.clipboard.writeText(report());$('status').textContent='보고서를 복사했어.'};
-$('dl').onclick=()=>{if(!S.cats?.length)return alert('저장할 결과가 없어.');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}));a.download='작품분석.json';a.click();URL.revokeObjectURL(a.href)};
+$('dl').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(LIB)],{type:'application/json'}));a.download='작품서재백업.json';a.click();URL.revokeObjectURL(a.href)};
 $('provider').onchange=()=>{const g=$('provider').value==='gemini';$('epw').style.display=g?'none':'block';$('model').value=g?'gemini-flash-latest':''};
+
+let LIB={works:[],w:null,e:null};
+const uid=()=>Math.random().toString(36).slice(2,9),cw=()=>LIB.works.find(w=>w.id==LIB.w),
+newEp=n=>({id:uid(),name:n,text:'',stats:null,cats:[],profile:null,syn:null,open:{},tab:'sum',sel:0}),
+newW=t=>({id:uid(),title:t,eps:[newEp('1화')]});
+const idb=()=>new Promise((ok,no)=>{const r=indexedDB.open('wa',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+const load=async()=>{try{const d=await idb();return await new Promise(ok=>{const q=d.transaction('kv').objectStore('kv').get('lib');q.onsuccess=()=>ok(q.result);q.onerror=()=>ok(null)})}catch(e){return null}};
+let pt;function persist(){clearTimeout(pt);pt=setTimeout(async()=>{try{(await idb()).transaction('kv','readwrite').objectStore('kv').put(LIB,'lib')}catch(e){$('status').textContent='저장 실패(이 기기에 저장되지 않아): '+e.message}},400)}
+const prevEps=()=>{const a=cw().eps,i=a.findIndex(e=>e.id==S.id);return a.slice(0,i).filter(e=>e.profile?.digest)};
+function pick(){const w=cw()||LIB.works[0];LIB.w=w.id;S=w.eps.find(e=>e.id==LIB.e)||w.eps[0];LIB.e=S.id;$('title').value=S.name||'';$('story').value=S.text||'';render()}
+const L=f=>(...a)=>busy?alert('분석 중에는 바꿀 수 없어.'):f(...a);
+const pickW=L(id=>{LIB.w=id;LIB.e=cw().eps[0].id;pick()}),pickE=L(id=>{LIB.e=id;pick()}),
+addW=L(()=>{const t=prompt('작품 제목');if(!t)return;const w=newW(t);LIB.works.push(w);LIB.w=w.id;LIB.e=w.eps[0].id;pick()}),
+renW=()=>{const t=prompt('작품 제목',cw().title);if(t){cw().title=t;S.title=t+' '+(S.name||'');render()}},
+delW=L(()=>{if(!confirm('이 작품과 모든 회차를 삭제할까?'))return;LIB.works=LIB.works.filter(x=>x.id!=LIB.w);if(!LIB.works.length)LIB.works.push(newW('내 작품'));LIB.w=LIB.works[0].id;LIB.e=LIB.works[0].eps[0].id;pick()}),
+addE=L(()=>{const w=cw(),e=newEp(w.eps.length+1+'화');w.eps.push(e);LIB.e=e.id;pick()}),
+delE=L(()=>{if(!confirm('현재 회차를 삭제할까?'))return;const w=cw();w.eps=w.eps.filter(e=>e.id!=LIB.e);if(!w.eps.length)w.eps.push(newEp('1화'));LIB.e=w.eps[0].id;pick()}),
+mvE=L(d=>{const a=cw().eps,i=a.findIndex(e=>e.id==LIB.e),j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];pick()});
+function renderLib(){const w=cw();if(!w)return;
+ $('lib').innerHTML=`<select onchange="pickW(this.value)">${LIB.works.map(x=>`<option value="${x.id}" ${x.id==w.id?'selected':''}>${esc(x.title)} (${x.eps.length}회차)</option>`).join('')}</select><div class="tools" style="margin:8px 0 0"><button class="s" onclick="addW()">새 작품</button><button class="s" onclick="renW()">작품명 변경</button><button class="s" onclick="delW()">작품 삭제</button></div><div class="eps">${w.eps.map((e,i)=>{const t=total(e).score;return`<div class="ep ${e.id==LIB.e?'on':''}" onclick="pickE('${e.id}')"><span>${esc(e.name||'회차 '+(i+1))}</span><b style="color:${t==null?'var(--m)':col(t)}">${t==null?'미분석':grade(t)+' '+t.toFixed(0)}</b></div>`}).join('')}</div><div class="tools" style="margin:8px 0 0"><button class="s" onclick="addE()">+ 새 회차</button><button class="s" onclick="mvE(-1)">↑</button><button class="s" onclick="mvE(1)">↓</button><button class="s" onclick="delE()">회차 삭제</button></div>`}
+const workPrompt=w=>`너는 총괄 편집장이다. ${RUB}\n작품: ${w.title}\n아래는 같은 작품의 회차별 분석 요약이다(순서대로). 회차 간 연속성, 점수 추이, 반복되는 문제, 성장 여부를 종합해라.\n${w.eps.filter(e=>e.syn).map(e=>{const t=total(e);return`[${e.name}] 점수 ${t.score?.toFixed(0)} · 요약: ${e.profile?.digest||''} · 평결: ${e.syn.verdict} · 약점: ${(e.syn.weaknesses||[]).map(x=>x.t).join(', ')} · 영역: ${CATS.map((c,i)=>t.av[i]!=null?c[0]+t.av[i].toFixed(0):'').filter(Boolean).join(' ')}`}).join('\n')}\nJSON: {"overall":"작품 전체 총평 4~6문장","trend":"점수 추이와 성장·퇴보 분석","continuity":"회차 간 설정·복선·인물 일관성 평가","recurring":["여러 회차에서 반복되는 약점 3~5개"],"next":["다음 회차를 위한 구체적 제안 4개"]}`;
+async function workSyn(){const w=cw();if(!w.eps.some(e=>e.syn))return alert('분석이 끝난 회차가 없어.');if(busy)return;busy=true;prog('작품 전체 종합 중…',50);
+ try{w.syn=await callJ(workPrompt(w),0.5);prog('작품 전체 종합 완료',100)}catch(e){$('status').textContent='오류: '+e.message}finally{busy=false}render()}
+function workTab(){const w=cw(),E=w.eps.map(e=>({e,t:total(e)})),ok=E.filter(x=>x.t.score!=null),y=w.syn;
+ const pts=ok.map((x,i)=>[20+(ok.length>1?i*300/(ok.length-1):150),110-x.t.score]);
+ return`<div class="panel"><h2>${esc(w.title)} <small class="hint">${w.eps.length}회차 · 분석 완료 ${ok.length}회차</small></h2>${ok.length>1?`<svg viewBox="0 0 340 125"><polyline points="${pts.join(' ')}" fill="none" stroke="#b6a0ff" stroke-width="2"/>${pts.map((q,i)=>`<circle cx="${q[0]}" cy="${q[1]}" r="4" fill="${col(ok[i].t.score)}"/><text x="${q[0]}" y="${q[1]-8}" font-size="10" text-anchor="middle" fill="#ececf2">${ok[i].t.score.toFixed(0)}</text>`).join('')}</svg>`:'<p class="hint">2개 회차 이상 분석하면 점수 추이 그래프가 나와.</p>'}</div>
+<div class="panel"><h2>회차 × 영역 점수표 <small class="hint">회차명을 누르면 해당 회차 결과로 이동</small></h2><div style="overflow-x:auto"><table class="hm"><tr><th></th>${E.map(x=>`<th onclick="pickE('${x.e.id}');go('sum')">${esc(x.e.name)}</th>`).join('')}</tr><tr><td>종합</td>${E.map(x=>`<td style="font-weight:700">${x.t.score==null?'-':grade(x.t.score)+' '+x.t.score.toFixed(0)}</td>`).join('')}</tr>${CATS.map((c,i)=>`<tr><td>${c[0]}</td>${E.map(x=>{const a=x.t.av[i];return`<td style="${a==null?'color:var(--m)':`background:${col(a)};color:#101116`}">${a==null?'-':a.toFixed(0)}</td>`}).join('')}</tr>`).join('')}</table></div></div>
+<div class="panel"><h2>작품 전체 종합</h2><p class="hint">회차별 요약·점수를 모아 연속성, 성장 추세, 반복되는 약점을 분석해. 분석한 회차가 많을수록 정확해.</p><button onclick="workSyn()">${y?'다시 ':''}종합 분석 실행</button>${y?`<div class="box">${esc(y.overall)}</div><h3>점수 추이·성장</h3><p>${esc(y.trend)}</p><h3>회차 간 연속성·일관성</h3><p>${esc(y.continuity)}</p><h3>반복되는 약점</h3>${ul(y.recurring||[])}<h3>다음 회차 제안</h3>${ul(y.next||[])}`:''}</div>`}
+$('title').oninput=()=>{S.name=$('title').value;S.title=cw().title+' '+S.name;renderLib();persist()};
+$('story').oninput=()=>{S.text=$('story').value;persist()};
+$('imp').onclick=()=>{const f=document.createElement('input');f.type='file';f.accept='.json';f.onchange=async()=>{try{const d=JSON.parse(await f.files[0].text());if(!d.works?.length)throw 0;LIB=d;pick()}catch{alert('올바른 백업 파일이 아니야.')}};f.click()};
+(async()=>{const d=await load();if(d?.works?.length)LIB=d;else{const w=newW('내 작품');LIB={works:[w],w:w.id,e:w.eps[0].id}}pick()})();
 </script></body></html>
